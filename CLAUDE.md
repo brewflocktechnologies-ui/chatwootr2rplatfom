@@ -41,6 +41,8 @@ cd apps\platform-api
 
 Golden-flow E2E (Playwright 1.65.1; needs the full stack running): `pnpm nx run e2e:golden-flow`, which runs `apps/e2e/scripts/run-golden-flow.mjs`.
 
+Fault-injection E2E (HO-08 and send-path cases) is not an Nx target. It runs `apps/e2e/scripts/run-faults.mjs` against a throwaway Compose project, `saas-e2e-faults`, and must never touch the four real Compose projects. The HO-08 spec is `apps/e2e/tests/ho08.spec.ts`.
+
 Stack lifecycle (PowerShell, from repo root):
 
 - `scripts\doctor.ps1`: read-only machine check
@@ -57,6 +59,8 @@ Double-click `start-platform.bat` and `stop-platform.bat` for the same up and do
 **Inbound customer message path.** Chatwoot's AgentBot posts `message_created` to `POST /api/webhooks/chatwoot/agent-bot`. The endpoint verifies `X-Chatwoot-Signature` (HMAC-SHA256 over `timestamp.raw body`, keyed with the bot secret), rejects stale timestamps, and inserts into `webhook_inbox`. The unique dedupe key is event plus message ID, so redelivery is a no-op. A worker claims rows under a per-conversation lock. Bot-authored and human-authored messages are recorded but never start an AI turn.
 
 **One AI turn.** The turn checks platform ownership first. If the state is not `AI_ACTIVE`, it stops with no R2R call and no reply. Then it checks the human-request phrases, which hand off before any retrieval. It then calls R2R RAG for the tenant collection only and applies the evidence gate. Immediately before sending, it re-reads ownership and version and the Chatwoot conversation state. A late result after an ownership change is discarded. The send uses an idempotency record, so a timeout retry never sends twice.
+
+**Known gap (HO-08 residual).** A human request that arrives after the bot's Chatwoot POST has already started can still let that one answer through. Intake cannot cancel an in-flight HTTP call. This is an accepted limit (see `docs/implementation-status.md`); don't assume "no answer after handoff" holds for that single window.
 
 **Ownership.** `conversation_control` in platform PostgreSQL is the source of truth for AI eligibility. Chatwoot holds messages, assignment and status. The inbox auto-assigns our AgentBot and sets conversations to `pending` (or `open`), so eligibility means "status is pending or open, and assignee is unassigned or our bot". A human assignment or another bot makes the conversation ineligible.
 
@@ -83,4 +87,5 @@ Double-click `start-platform.bat` and `stop-platform.bat` for the same up and do
 - `bootstrap.md` is the build contract. Any change to a route, env name or state transition goes into `docs/architecture/api-contract.md` or `conversation-lifecycle.md` first.
 - Operator scripts are PowerShell-first. Anything destructive must be named that way and require typed confirmation.
 - Logs go to stdout with correlation IDs (webhook delivery ID, conversation ID, R2R request ID). Never log message bodies, tokens or secrets.
-- Do not commit unless asked. Nothing in this repo is in git history yet.
+- Do not commit unless asked. The repo is on `main`, pushed to `origin` (`brewflocktechnologies-ui/chatwootr2rplatfom`); commit and push only on request.
+- Generated output (`artifacts/`, `.diag.json`, `.nx/`) is git-ignored. Don't commit it.
