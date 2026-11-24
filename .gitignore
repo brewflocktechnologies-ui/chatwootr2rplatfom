@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+artifacts/
+target/
+.env
+.env.*
+!.env.example
+infra/**/.env
+*.log
+.nx/cache
+.nx/workspace-data
+.DS_Store
+Thumbs.db
+# Local secrets and generated config (never commit)
+infra/**/.env.secrets
+infra/**/config/r2r.local.toml
+.env.local
+# Research/probe artifacts (sanitized copies only are committed under docs/research/fixtures)
+artifacts/
+.pnpm-store/
+.claude/settings.local.json
+.diag.json

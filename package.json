@@ -1,0 +1,25 @@
+{
+  "name": "acme-support-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local AI-first, human-first support MVP (one tenant: acme-demo). Nx monorepo.",
+  "packageManager": "pnpm@12.23.0",
+  "engines": {
+    "node": ">=26.13.1 <27",
+    "pnpm": "12.23.0"
+  },
+  "scripts": {
+    "nx": "nx",
+    "local:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1",
+    "local:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/status.ps1",
+    "local:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/up.ps1",
+    "local:down": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/down.ps1",
+    "local:logs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/logs.ps1",
+    "local:golden-flow": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/golden-flow.ps1"
+  },
+  "devDependencies": {
+    "@nx/next": "24.0.6",
+    "next": "16.4.6",
+    "nx": "24.0.6"
+  }
+}

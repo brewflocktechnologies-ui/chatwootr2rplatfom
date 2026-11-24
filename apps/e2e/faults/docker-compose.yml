@@ -1,0 +1,41 @@
+# Throwaway platform instance for fault-injection E2E only. Compose project: saas-e2e-faults.
+# Same image as the main platform (saas-platform/platform-api:local, not rebuilt here), same secrets (env_file points at
+# the ignored infra/platform/.env; nothing is copied), its own database and volume, host port 8081.
+# Upstreams go through the fault proxy: Chatwoot via host.docker.internal:3900, R2R via host.docker.internal:7373.
+# Teardown: docker compose -p saas-e2e-faults -f apps/e2e/faults/docker-compose.yml down -v
+name: saas-e2e-faults
+
+services:
+  faults-db:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_DB=acme_platform
+      - POSTGRES_USER=acme_platform
+      - POSTGRES_PASSWORD=${PLATFORM_DB_PASSWORD:?set in infra/platform/.env}
+    volumes:
+      - faults_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acme_platform -d acme_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  faults-platform-api:
+    image: saas-platform/platform-api:local
+    env_file: ../../../infra/platform/.env
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://faults-db:5432/acme_platform
+      - SPRING_DATASOURCE_USERNAME=acme_platform
+      - SPRING_DATASOURCE_PASSWORD=${PLATFORM_DB_PASSWORD}
+      - CHATWOOT_BASE_URL=http://host.docker.internal:3900
+      - R2R_BASE_URL=http://host.docker.internal:7373
+    ports:
+      - "127.0.0.1:8081:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      faults-db:
+        condition: service_healthy
+
+volumes:
+  faults_db:

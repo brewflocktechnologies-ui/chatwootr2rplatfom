@@ -1,0 +1,2 @@
+# Own workspace root so `pnpm install` here does not touch the repo-level workspace node_modules.
+packages: []

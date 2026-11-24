@@ -1,0 +1,70 @@
+# Custom platform containers for the Acme Demo MVP: platform DB, platform API, admin/demo web.
+# Upstreams (Chatwoot, R2R, Ollama) are separate managed-local projects and are reached via host.docker.internal.
+# Compose project: saas-platform. Own named volume only. Loopback-only host ports.
+name: saas-platform
+
+services:
+  platform-db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=acme_platform
+      - POSTGRES_USER=acme_platform
+      - POSTGRES_PASSWORD=${PLATFORM_DB_PASSWORD:?set in infra/platform/.env}
+    volumes:
+      - platform_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acme_platform -d acme_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  platform-api:
+    build:
+      context: ../../apps/platform-api
+      dockerfile: Dockerfile
+    image: saas-platform/platform-api:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://platform-db:5432/acme_platform
+      - SPRING_DATASOURCE_USERNAME=acme_platform
+      - SPRING_DATASOURCE_PASSWORD=${PLATFORM_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${PLATFORM_API_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      platform-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health/readiness HTTP/1.0\r\n\r\n\" >&3 && head -1 <&3 | grep -q \" 200 \""]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  admin-web:
+    build:
+      context: ../..
+      dockerfile: apps/admin-web/Dockerfile
+    image: saas-platform/admin-web:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PLATFORM_API_URL=http://platform-api:8080
+    ports:
+      - "127.0.0.1:${ADMIN_WEB_PORT:-4300}:4300"
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4300/api/health').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  platform_db:
+    name: saas-platform_db

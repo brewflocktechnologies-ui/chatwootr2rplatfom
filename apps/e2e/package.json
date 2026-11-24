@@ -1,0 +1,13 @@
+{
+  "name": "@acme-support/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.23.0",
+  "scripts": {
+    "golden-flow": "node scripts/run-golden-flow.mjs",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  }
+}

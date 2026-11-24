@@ -1,0 +1,84 @@
+# Managed-local, PINNED Chatwoot profile for the Acme Demo MVP.
+# Upstream: chatwoot/chatwoot-compose layout at tag v4.20.1 (docker-compose.production.yaml).
+# Deliberately isolated: own Compose project name and named volumes (saas-chatwoot_*).
+# Does NOT touch the user's existing E:\SAAS\CHATWOOT stack or its chatwoot_* volumes.
+name: saas-chatwoot
+
+x-chatwoot: &chatwoot
+  image: chatwoot/chatwoot:v4.20.1
+  env_file: .env
+  volumes:
+    - storage_data:/app/storage
+  restart: unless-stopped
+
+services:
+  rails:
+    <<: *chatwoot
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${CHATWOOT_PORT:-3100}:3000"
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    entrypoint: docker/entrypoints/rails.sh
+    command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 120s
+
+  sidekiq:
+    <<: *chatwoot
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set in infra/chatwoot/.env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chatwoot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\""]
+    env_file: .env
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  storage_data:
+    name: saas-chatwoot_storage_data
+  postgres_data:
+    name: saas-chatwoot_postgres_data
+  redis_data:
+    name: saas-chatwoot_redis_data

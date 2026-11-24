@@ -1,0 +1,68 @@
+{
+  "name": "admin-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/admin-web/src",
+  "projectType": "application",
+  "tags": [
+    "scope:admin-web"
+  ],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec next dev -p 4300 -H 127.0.0.1",
+        "cwd": "apps/admin-web"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "outputs": [
+        "{projectRoot}/.next"
+      ],
+      "options": {
+        "command": "pnpm exec next build",
+        "cwd": "apps/admin-web"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "command": "pnpm exec eslint . --max-warnings=0",
+        "cwd": "apps/admin-web"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "command": "pnpm exec tsc --noEmit -p tsconfig.json",
+        "cwd": "apps/admin-web"
+      },
+      "dependsOn": [
+        "build"
+      ]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "command": "pnpm exec vitest run --config vitest.config.mts",
+        "cwd": "apps/admin-web"
+      }
+    },
+    "verify": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "lint",
+        "typecheck",
+        "test",
+        "build"
+      ],
+      "options": {
+        "command": "echo admin-web verify passed"
+      }
+    }
+  }
+}

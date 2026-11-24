@@ -1,0 +1,16 @@
+{
+  "name": "e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/e2e",
+  "projectType": "application",
+  "tags": ["scope:e2e"],
+  "targets": {
+    "e2e:golden-flow": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/run-golden-flow.mjs",
+        "cwd": "apps/e2e"
+      }
+    }
+  }
+}

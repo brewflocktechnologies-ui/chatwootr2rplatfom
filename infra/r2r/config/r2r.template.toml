@@ -1,0 +1,67 @@
+# R2R v3.6.5 config for the Acme Demo MVP. Template only: the generator script writes
+# config/r2r.local.toml (git-ignored) with a random default-admin password.
+# Verified against py/core/configs/ollama.toml, r2r_with_auth.toml and py/r2r/r2r.toml at tag v3.6.5.
+
+[app]
+default_max_documents_per_user = 1_000
+default_max_chunks_per_user = 100_000
+default_max_collections_per_user = 50
+default_max_upload_size = 20_971_520   # 20 MiB, MVP upload ceiling
+# Local Ollama models only (no hosted providers). Pulled by scripts/model-pull.ps1.
+fast_llm = "ollama/llama3.2:3b"
+quality_llm = "ollama/llama3.2:3b"
+vlm = "ollama/llama3.2:3b"
+audio_lm = "ollama/llama3.2:3b"
+reasoning_llm = "ollama/llama3.2:3b"
+planning_llm = "ollama/llama3.2:3b"
+
+[agent]
+# Customer-facing RAG only: knowledge-base search. No web search / scrape tools.
+rag_tools = ["search_file_knowledge"]
+research_tools = []
+
+[auth]
+provider = "r2r"
+access_token_lifetime_in_minutes = 60
+refresh_token_lifetime_in_days = 7
+require_authentication = true
+require_email_verification = false
+default_admin_email = "r2r-admin@acme-demo.local"
+default_admin_password = "__GENERATED_AT_BOOTSTRAP__"
+
+[crypto]
+# bcrypt refuses to start without R2R_SECRET_KEY; nacl would fall back to a published key.
+provider = "bcrypt"
+
+[completion]
+provider = "litellm"
+concurrent_request_limit = 2
+
+  [completion.generation_config]
+  temperature = 0.1
+  top_p = 1
+  max_tokens_to_sample = 1_024
+  stream = false
+  api_base = "http://host.docker.internal:11434"
+
+[embedding]
+provider = "ollama"
+base_model = "mxbai-embed-large"
+base_dimension = 1_024
+batch_size = 32
+concurrent_request_limit = 2
+
+[completion_embedding]
+provider = "ollama"
+base_model = "mxbai-embed-large"
+base_dimension = 1_024
+batch_size = 32
+concurrent_request_limit = 2
+
+[ingestion]
+# Built-in parser: no Unstructured service dependency.
+provider = "r2r"
+
+[orchestration]
+# Single-node, in-process execution. No Hatchet/RabbitMQ.
+provider = "simple"
